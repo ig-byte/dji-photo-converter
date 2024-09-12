@@ -1,12 +1,13 @@
 from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 from tkinter import Tk, filedialog
 import os
 import subprocess
 import numpy as np
-import uuid
+import platform  # Para detectar el SO
+
 from tqdm import tqdm
-import json
-import io
+
 
 def seleccionar_imagen():
     root = Tk()
@@ -27,13 +28,29 @@ def cambiar_paleta_dji(name_img,path,path_temp, palette):
     output_file = f"{path_temp}/{name_img}"
 
     # Comando para ejecutar el procesamiento térmico con el cambio de paleta
-    cmd = [
-        "./dji_thermal_sdk_v1.4_20220929/utility/bin/windows/release_x86/dji_irp.exe",
-        "-s", path,
-        "-a", "process",
-        "-o", output_file,
-        "-p", palette,  # Cambia la paleta de colores aquí (ironbow_1, white_hot, black_hot, etc.)
-    ]
+    so = platform.system()
+
+    # Configurar el comando dependiendo del sistema operativo
+    if so == "Windows":
+        # Comando para Windows
+        cmd = [
+            "dji_thermal_sdk_v1.4_20220929/utility/bin/windows/release_x86/dji_irp.exe",
+            "-s", path,
+            "-a", "process",
+            "-o", output_file,
+            "-p", palette,
+        ]
+    elif so == "Darwin":  # Darwin es macOS
+        # Comando para macOS
+        cmd = [
+            "wine", "dji_thermal_sdk_v1.4_20220929/utility/bin/windows/release_x86/dji_irp.exe",
+            "-s", path,
+            "-a", "process",
+            "-o", output_file,
+            "-p", palette,
+        ]
+    else:
+        raise RuntimeError(f"El sistema operativo {so} no es compatible con este script.")
 
     # Ejecutar el comando
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -112,7 +129,7 @@ def texto_en_imagen(path_img_new, nameimagen, directorio_metadata):
     draw = ImageDraw.Draw(image)
 
     # Elegir la fuente y el tamaño (asegúrate de tener la fuente 'arial.ttf')
-    font = ImageFont.truetype("arial.ttf", 21)
+    font = ImageFont.truetype("fuente/Verdana.ttf", 21)
     #font = ImageFont.truetype("C:/Users/Adentu/Desktop/Fotos DJI/fuente/Verdana.ttf", 20)
     #font = ImageFont.truetype("C:/Users/Adentu/Desktop/Fotos DJI/fuente/Courier.ttf", 19)
     #font = ImageFont.truetype("C:/Users/Adentu/Desktop/Fotos DJI/fuente/Courier_New.ttf", 19)
@@ -228,7 +245,7 @@ def escalar_imagen(input_image_path, output_image_path, new_size=(1280, 1024)):
     img = Image.open(input_image_path)
 
     # Escalar la imagen al nuevo tamaño
-    img_escalada = img.resize(new_size, Image.ANTIALIAS)  # Puedes usar otros métodos de interpolación
+    img_escalada = img.resize(new_size, Image.Resampling.LANCZOS)  # Usar el método LANCZOS  # Puedes usar otros métodos de interpolación
 
     # Guardar la imagen escalada
     img_escalada.save(output_image_path)
@@ -250,7 +267,7 @@ if not os.path.exists(dir_img_new):
 dir_metadata = os.path.join(dir_main,"metadata")
 if not os.path.exists(dir_metadata):
     os.makedirs(dir_metadata)
-
+"""
 with tqdm(total=len(os.listdir(dir_img)), desc="Convirtiendo imagenes") as pbar:
     for img in os.listdir(dir_img):
         # Actualiza la barra con el nombre del archivo actual
@@ -267,7 +284,7 @@ with tqdm(total=len(os.listdir(dir_img)), desc="Convirtiendo imagenes") as pbar:
         extraer_info_y_guardar(os.path.join(dir_img, img), dir_metadata)
         # Actualizar la barra de progreso
         pbar.update(1)
-
+"""
 with tqdm(total=len(os.listdir(dir_img_new)), desc="Re-escalando imagenes") as pbar:
     for img in os.listdir(dir_img_new):
         pbar.set_postfix({"Procesando": img})
